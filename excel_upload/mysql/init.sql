@@ -1,0 +1,10 @@
+USE farmacia;
+
+CREATE TABLE medicamentos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    codigo VARCHAR(50) NOT NULL UNIQUE,
+    nombre VARCHAR(255) NOT NULL,
+    cantidad INT NOT NULL,
+    precio DECIMAL(10,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

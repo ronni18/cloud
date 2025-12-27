@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Carga medicamentos</title>
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+</head>
+<body class="bg-light">
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white text-center">
+                    <h4>Carga masiva de medicamentos</h4>
+                </div>
+
+                <div class="card-body">
+
+                    <div class="d-grid mb-3">
+                        <a
+                          href="http://localhost:8000/api/format"
+                          class="btn btn-outline-primary"
+                        >
+                            Descargar formato
+                        </a>
+                    </div>
+
+                    <form id="uploadForm">
+                        <input
+                            type="file"
+                            name="excel"
+                            accept=".xlsx"
+                            class="form-control mb-3"
+                            required
+                        >
+                        <button class="btn btn-primary w-100">
+                            Subir archivo
+                        </button>
+                    </form>
+
+                    <div id="result" class="mt-3"></div>
+
+                </div>
+            </div>
+            <hr>
+
+            <h5 class="mt-4">Medicamentos cargados</h5>
+
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered mt-2">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Código</th>
+                            <th>Nombre</th>
+                            <th>Cantidad</th>
+                            <th>Precio</th>
+                        </tr>
+                    </thead>
+                    <tbody id="medicamentosTable">
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+     async function cargarMedicamentos() {
+        const res = await fetch("http://localhost:8000/api/medicamentos");
+        const data = await res.json();
+    
+        const tbody = document.getElementById("medicamentosTable");
+        tbody.innerHTML = "";
+    
+        data.forEach(item => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${item.codigo}</td>
+                    <td>${item.nombre}</td>
+                    <td>${item.cantidad}</td>
+                    <td>$${item.precio}</td>
+                </tr>
+            `;
+        });
+    }
+    
+    // cargar al iniciar
+    cargarMedicamentos();
+    
+    document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData(e.target);
+
+        const res = await fetch("http://localhost:8000/api/upload", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await res.json();
+
+        document.getElementById("result").innerHTML =
+            `<div class="alert alert-success">
+                ${data.message}<br>
+                Filas procesadas: ${data.rows}
+            </div>`;
+
+        cargarMedicamentos(); // recargar la tabla
+    });
+</script>
+    
+
+</body>
+</html>

@@ -1,0 +1,44 @@
+services:
+
+  api:
+    build: ./api
+    container_name: excel_api
+    volumes:
+      - ./api:/app
+    ports:
+      - "8000:8000"
+    environment:
+      DB_HOST: mysql
+      DB_USER: farmacia_user
+      DB_PASSWORD: farmacia_pass
+      DB_NAME: farmacia
+    depends_on:
+      - mysql
+
+  web:
+    build: ./web
+    container_name: excel_web
+    volumes:
+      - ./web:/usr/share/nginx/html
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
+  mysql:
+    image: mysql:8.0
+    container_name: excel_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: farmacia
+      MYSQL_USER: farmacia_user
+      MYSQL_PASSWORD: farmacia_pass
+    ports:
+      - 3307:3306
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  mysql_data:
