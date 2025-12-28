@@ -60,6 +60,7 @@
                             <th>Nombre</th>
                             <th>Cantidad</th>
                             <th>Precio</th>
+                            <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="medicamentosTable">
@@ -72,13 +73,27 @@
 </div>
 
 <script>
-     async function cargarMedicamentos() {
-        const res = await fetch("http://localhost:8000/api/medicamentos");
+    const API_URL = "http://localhost:8000/api";
+
+    async function cargarMedicamentos() {
+        const res = await fetch(`${API_URL}/medicamentos`);
         const data = await res.json();
-    
+
         const tbody = document.getElementById("medicamentosTable");
         tbody.innerHTML = "";
-    
+
+        // 👉 CUANDO NO HAY MEDICAMENTOS
+        if (data.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center text-muted">
+                        No hay medicamentos registrados
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
         data.forEach(item => {
             tbody.innerHTML += `
                 <tr>
@@ -86,20 +101,55 @@
                     <td>${item.nombre}</td>
                     <td>${item.cantidad}</td>
                     <td>$${item.precio}</td>
+                    <td class="text-center">
+                        <button
+                            class="btn btn-sm btn-danger"
+                            onclick="eliminarMedicamento('${item.codigo}')">
+                            Eliminar
+                        </button>
+                    </td>
                 </tr>
             `;
         });
     }
-    
+
+    async function eliminarMedicamento(codigo) {
+        const confirmacion = confirm(
+            `¿Seguro que deseas eliminar el medicamento ${codigo}?`
+        );
+
+        if (!confirmacion) return;
+
+        try {
+            const res = await fetch(
+                `${API_URL}/medicamentos?codigo=${codigo}`,
+                { method: "DELETE" }
+            );
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                alert(data.error || "Error al eliminar");
+                return;
+            }
+
+            alert(data.message);
+            cargarMedicamentos();
+
+        } catch (err) {
+            alert("Error de conexión con el servidor");
+        }
+    }
+
     // cargar al iniciar
     cargarMedicamentos();
-    
+
     document.getElementById("uploadForm").addEventListener("submit", async (e) => {
         e.preventDefault();
 
         const formData = new FormData(e.target);
 
-        const res = await fetch("http://localhost:8000/api/upload", {
+        const res = await fetch(`${API_URL}/upload`, {
             method: "POST",
             body: formData
         });
@@ -112,7 +162,7 @@
                 Filas procesadas: ${data.rows}
             </div>`;
 
-        cargarMedicamentos(); // recargar la tabla
+        cargarMedicamentos();
     });
 </script>
     

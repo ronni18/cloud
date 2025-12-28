@@ -6,6 +6,7 @@ from io import BytesIO
 import mysql.connector
 import os
 from decimal import Decimal
+from urllib.parse import urlparse, parse_qs
 
 
 # ===============================
@@ -43,7 +44,7 @@ class APIHandler(BaseHTTPRequestHandler):
     # ---------- CORS ----------
     def _set_cors_headers(self):
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, DELETE, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
 
     def do_OPTIONS(self):
@@ -73,6 +74,17 @@ class APIHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps({"error": "Endpoint no encontrado"}).encode())
+    
+    def do_DELETE(self):
+        if self.path.startswith("/api/medicamentos"):
+            self.delete_medicamento()
+        else:
+            self.send_response(404)
+            self._set_cors_headers()
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "Endpoint no encontrado"}).encode())
+
 
     # ---------- DESCARGAR FORMATO ----------
     def download_format(self):
@@ -113,7 +125,12 @@ class APIHandler(BaseHTTPRequestHandler):
             insert_sql = """
                 INSERT INTO medicamentos (codigo, nombre, cantidad, precio)
                 VALUES (%s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                    nombre = VALUES(nombre),
+                    cantidad = VALUES(cantidad),
+                    precio = VALUES(precio)
             """
+
 
             rows_inserted = 0
             for _, row in df.iterrows():
@@ -166,6 +183,60 @@ class APIHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps(rows).encode())
+
+        except Exception as e:
+            self.send_response(500)
+            self._set_cors_headers()
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode())
+
+    def delete_medicamento(self):
+        try:
+            # Obtener query params (?codigo=XXX)
+            parsed_url = urlparse(self.path)
+            params = parse_qs(parsed_url.query)
+
+            if "codigo" not in params:
+                self.send_response(400)
+                self._set_cors_headers()
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(
+                    json.dumps({"error": "El parámetro 'codigo' es obligatorio"}).encode()
+                )
+                return
+
+            codigo = params["codigo"][0]
+
+            conn = get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute(
+                "DELETE FROM medicamentos WHERE codigo = %s",
+                (codigo,)
+            )
+
+            conn.commit()
+            deleted_rows = cursor.rowcount
+
+            cursor.close()
+            conn.close()
+
+            if deleted_rows == 0:
+                self.send_response(404)
+                response = {"error": "Medicamento no encontrado"}
+            else:
+                self.send_response(200)
+                response = {
+                    "message": "Medicamento eliminado correctamente",
+                    "codigo": codigo
+                }
+
+            self._set_cors_headers()
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(response).encode())
 
         except Exception as e:
             self.send_response(500)
